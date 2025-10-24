@@ -36,7 +36,6 @@ interface LearnerProgress {
   completionStatus: 'completed' | 'in-progress' | 'not-started'
   certificateStatus: 'issued' | 'pending' | 'not-eligible'
   progress: number
-  lastActivity: string
   certificateId?: string
   completionDate?: string
 }

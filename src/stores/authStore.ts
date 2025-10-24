@@ -1,66 +1,80 @@
-import { create } from 'zustand'
-import { devtools, persist } from 'zustand/middleware'
-import { User, AuthStore } from '@/types/store'
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { mockAuthService } from '@/lib/mockData';
+import { setGlobalLogout } from '@/lib/error-toast-handler';
 
-// Mock API functions (replace with real API calls)
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    createdAt: '2024-01-01T00:00:00Z',
-    lastLogin: '2024-02-20T00:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'SOP User',
-    email: 'sop@acme-corp.com',
-    role: 'sop',
-    organizationId: 'org-1',
-    organizationWebsite: 'Acme Corp',
-    createdAt: '2024-01-15T00:00:00Z',
-    lastLogin: '2024-02-20T00:00:00Z'
-  }
-]
+// Mock API functions for demo
+const loginAPI = async (email: string, password: string) => {
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
-const loginAPI = async (email: string, password: string): Promise<User> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
-  // Mock authentication logic
-  const user = mockUsers.find(u => u.email === email)
-  
-  if (!user) {
-    throw new Error('Invalid email or password')
-  }
-  
-  // In a real implementation, you would verify the password
-  if (password !== 'password') {
-    throw new Error('Invalid email or password')
-  }
-  
-  // Update last login
-  user.lastLogin = new Date().toISOString()
-  
-  return user
-}
+  // Calculate token expiry (24 hours from now)
+  const tokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
 
-const checkAuthAPI = async (): Promise<User | null> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // In a real implementation, you would check for a valid token
-  const token = localStorage.getItem('auth-token')
-  
-  if (!token) {
-    return null
+  // Admin login
+  if (email === 'admin@example.com' && password === 'password') {
+    return {
+      id: '1',
+      email: 'admin@example.com',
+      name: 'Admin User',
+      role: 'admin' as const,
+      organizationWebsite: 'https://example.com',
+      apiToken: 'mock-admin-token',
+      tokenExpiry,
+    };
   }
-  
-  // Mock token validation
-  const user = mockUsers[0] // Return admin user for demo
-  return user
-}
+
+  // SOP login using mock service
+  const sopResult = await mockAuthService.sopLogin(email, password);
+  if (sopResult.success && sopResult.user) {
+    return {
+      ...sopResult.user,
+      apiToken: 'mock-sop-token',
+      tokenExpiry,
+    };
+  }
+
+  throw new Error(sopResult.error || 'Invalid credentials');
+};
+
+const checkAuthAPI = async () => {
+  // Only run in browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // Check if user exists in localStorage
+  const userData = localStorage.getItem('user');
+  if (userData) {
+    try {
+      const parsedUser = JSON.parse(userData);
+      // Validate that the user object has required fields
+      if (
+        parsedUser &&
+        parsedUser.id &&
+        parsedUser.email &&
+        parsedUser.role
+      ) {
+        return parsedUser;
+      }
+    } catch (error) {
+      console.error(
+        'Failed to parse user data from localStorage:',
+        error
+      );
+      // Clear invalid data
+      localStorage.removeItem('user');
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('token');
+    }
+  }
+
+  // Return null if no user data found
+  return null;
+};
 
 export const useAuthStore = create<AuthStore>()(
   devtools(
@@ -74,92 +88,250 @@ export const useAuthStore = create<AuthStore>()(
 
         // Actions
         setUser: (user) => {
-          set({ 
-            user, 
-            isAuthenticated: !!user 
-          }, false, 'setUser')
+          // Store user data in localStorage for persistence
+          if (user) {
+            localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem(
+              'auth-token',
+              user.apiToken || 'mock-token'
+            );
+            // Also store token for SOP API compatibility
+            localStorage.setItem(
+              'token',
+              user.apiToken || 'mock-token'
+            );
+          } else {
+            localStorage.removeItem('user');
+            localStorage.removeItem('auth-token');
+            localStorage.removeItem('token');
+          }
+
+          set(
+            {
+              user,
+              isAuthenticated: !!user,
+            },
+            false,
+            'setUser'
+          );
         },
 
         setLoading: (loading) => {
-          set({ isLoading: loading }, false, 'setLoading')
+          set({ isLoading: loading }, false, 'setLoading');
         },
 
         setError: (error) => {
-          set({ error }, false, 'setError')
+          set({ error }, false, 'setError');
         },
 
         login: async (email, password) => {
-          set({ isLoading: true, error: null }, false, 'login/start')
-          
+          set({ isLoading: true, error: null }, false, 'login/start');
+
           try {
-            const user = await loginAPI(email, password)
-            
+            const user = await loginAPI(email, password);
+
             // Store auth token (in real implementation)
-            localStorage.setItem('auth-token', 'mock-token')
-            localStorage.setItem('user', JSON.stringify(user))
-            
-            set({ 
-              user, 
-              isAuthenticated: true, 
-              isLoading: false 
-            }, false, 'login/success')
+            localStorage.setItem('auth-token', 'mock-token');
+            localStorage.setItem('user', JSON.stringify(user));
+
+            set(
+              {
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              },
+              false,
+              'login/success'
+            );
           } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : 'Login failed',
-              isLoading: false 
-            }, false, 'login/error')
+            set(
+              {
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Login failed',
+                isLoading: false,
+              },
+              false,
+              'login/error'
+            );
           }
         },
 
         logout: () => {
           // Clear auth token and user data
-          localStorage.removeItem('auth-token')
-          localStorage.removeItem('user')
-          
-          set({ 
-            user: null, 
-            isAuthenticated: false, 
-            error: null 
-          }, false, 'logout')
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+
+          // Force clear the Zustand store state
+          set(
+            {
+              user: null,
+              isAuthenticated: false,
+              error: null,
+              isLoading: false,
+            },
+            false,
+            'logout'
+          );
         },
 
         checkAuth: async () => {
-          set({ isLoading: true, error: null }, false, 'checkAuth/start')
-          
+          set({ isLoading: true }, false, 'checkAuth/start');
+
           try {
-            const user = await checkAuthAPI()
-            
+            const user = await checkAuthAPI();
+
             if (user) {
-              set({ 
-                user, 
-                isAuthenticated: true, 
-                isLoading: false 
-              }, false, 'checkAuth/success')
+              // Check if token is expired
+              if (user.tokenExpiry && Date.now() > user.tokenExpiry) {
+                // Token is expired, clear auth state
+                localStorage.removeItem('user');
+                localStorage.removeItem('auth-token');
+                localStorage.removeItem('token');
+                set(
+                  {
+                    user: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                  },
+                  false,
+                  'checkAuth/tokenExpired'
+                );
+                return;
+              }
+
+              set(
+                {
+                  user,
+                  isAuthenticated: true,
+                  isLoading: false,
+                },
+                false,
+                'checkAuth/success'
+              );
             } else {
-              set({ 
-                user: null, 
-                isAuthenticated: false, 
-                isLoading: false 
-              }, false, 'checkAuth/unauthorized')
+              set(
+                {
+                  user: null,
+                  isAuthenticated: false,
+                  isLoading: false,
+                },
+                false,
+                'checkAuth/unauthorized'
+              );
             }
           } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : 'Auth check failed',
-              isLoading: false 
-            }, false, 'checkAuth/error')
+            set(
+              {
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Auth check failed',
+                isLoading: false,
+              },
+              false,
+              'checkAuth/error'
+            );
           }
-        }
+        },
+
+        isTokenExpired: () => {
+          // Check if token exists and if it has an expiry
+          if (typeof window !== 'undefined') {
+            const user = localStorage.getItem('user');
+            if (user) {
+              try {
+                const userData = JSON.parse(user);
+                if (
+                  userData.tokenExpiry &&
+                  Date.now() > userData.tokenExpiry
+                ) {
+                  return true;
+                }
+              } catch (error) {
+                console.error('Failed to parse user data:', error);
+                return true; // If we can't parse, consider it expired
+              }
+            }
+          }
+          return false;
+        },
       }),
       {
         name: 'auth-storage',
-        partialize: (state) => ({ 
+        partialize: (state) => ({
           user: state.user,
-          isAuthenticated: state.isAuthenticated
-        })
+          isAuthenticated: state.isAuthenticated,
+        }),
+        onRehydrateStorage: () => (state) => {
+          // Use setTimeout to ensure localStorage is available
+          setTimeout(() => {
+            if (typeof window !== 'undefined' && state) {
+              const userData = localStorage.getItem('user');
+              if (!userData) {
+                state.user = null;
+                state.isAuthenticated = false;
+              } else {
+                // Ensure the state is properly set from localStorage
+                try {
+                  const parsedUser = JSON.parse(userData);
+                  if (
+                    parsedUser &&
+                    parsedUser.id &&
+                    parsedUser.email &&
+                    parsedUser.role
+                  ) {
+                    state.user = parsedUser;
+                    state.isAuthenticated = true;
+                  } else {
+                    state.user = null;
+                    state.isAuthenticated = false;
+                  }
+                } catch {
+                  // If parsing fails, clear the state
+                  state.user = null;
+                  state.isAuthenticated = false;
+                }
+              }
+            }
+          }, 0);
+        },
       }
     ),
     {
-      name: 'auth-store'
+      name: 'auth-store',
     }
   )
-)
+);
+
+// Register the logout function with the error handler
+setGlobalLogout(() => {
+  useAuthStore.getState().logout();
+});
+
+// Types
+export interface AuthStore {
+  // State
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'sop' | 'student';
+    organizationWebsite?: string;
+    apiToken?: string;
+  } | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  setUser: (user: AuthStore['user']) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  checkAuth: () => Promise<void>;
+  isTokenExpired: () => boolean;
+}

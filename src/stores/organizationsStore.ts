@@ -1,65 +1,42 @@
-import { create } from 'zustand'
-import { devtools, persist } from 'zustand/middleware'
-import { Organization, OrganizationsStore } from '@/types/store'
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { Organization, OrganizationsStore } from '@/types/store';
+import {
+  organizationApi,
+  handleApiError,
+  adminApi,
+} from '@/lib/api/admin-api';
+import { OrganizationApi } from '@/types/api';
 
-// Mock API functions (replace with real API calls)
-const mockOrganizations: Organization[] = [
-  {
-    id: '1',
-    name: 'Acme Corp',
-    website: 'https://acme-corp.com',
-    sopEmail: 'sop@acme-corp.com',
-    status: 'active',
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-02-20T00:00:00Z',
-    totalLearners: 24,
-    totalCourses: 3
-  },
-  {
-    id: '2',
-    name: 'TechCorp Inc',
-    website: 'https://techcorp.com',
-    sopEmail: 'sop@techcorp.com',
-    status: 'active',
-    createdAt: '2024-01-20T00:00:00Z',
-    updatedAt: '2024-02-18T00:00:00Z',
-    totalLearners: 18,
-    totalCourses: 2
-  },
-  {
-    id: '3',
-    name: 'StartupIO',
-    website: 'https://startup.io',
-    sopEmail: 'sop@startup.io',
-    status: 'active',
-    createdAt: '2024-01-25T00:00:00Z',
-    updatedAt: '2024-02-21T00:00:00Z',
-    totalLearners: 12,
-    totalCourses: 1
-  }
-]
+// Helper function to transform API organization to store organization
+const transformApiOrganizationToStore = (
+  apiOrg: OrganizationApi
+): Organization => {
+  return {
+    id: apiOrg.id,
+    name: apiOrg.name,
+    website: apiOrg.website,
+    sopEmail: apiOrg.sop_email,
+    status: 'active', // Default status since API doesn't provide this
+    totalLearners: 0, // Will be updated when learners are loaded
+    totalCourses: 0, // Will be updated when courses are loaded
+  };
+};
 
-const fetchOrganizationsFromAPI = async (): Promise<Organization[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  return mockOrganizations
-}
-
-const createOrganizationAPI = async (organizationData: Omit<Organization, 'id' | 'createdAt' | 'updatedAt'>): Promise<Organization> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
-  const newOrganization: Organization = {
-    ...organizationData,
-    id: Date.now().toString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-  
-  return newOrganization
-}
+// Helper function to transform store organization to API organization
+const transformStoreOrganizationToApi = (
+  storeOrg: Omit<Organization, 'id'> & { sopPassword?: string }
+) => {
+  return {
+    website: storeOrg.website,
+    name: storeOrg.name,
+    sop_email: storeOrg.sopEmail,
+    sop_password: storeOrg.sopPassword || '',
+  };
+};
 
 export const useOrganizationsStore = create<OrganizationsStore>()(
+  // @ts-ignore - Zustand devtools middleware typing issue
   devtools(
     persist(
       (set, get) => ({
@@ -69,97 +46,335 @@ export const useOrganizationsStore = create<OrganizationsStore>()(
         isLoading: false,
         error: null,
         totalCount: 0,
+        pagination: {
+          currentPage: 1,
+          itemsPerPage: 10,
+          totalItems: 0,
+          hasMore: false,
+        },
+        searchTerm: '',
+        lastFetchParams: null, // Track last fetch parameters to prevent duplicates
 
         // Actions
         setOrganizations: (organizations) => {
-          set({ organizations, totalCount: organizations.length }, false, 'setOrganizations')
+          set({ organizations, totalCount: organizations.length });
         },
 
         addOrganization: (organization) => {
-          const { organizations } = get()
-          set({ 
-            organizations: [...organizations, organization], 
-            totalCount: organizations.length + 1 
-          }, false, 'addOrganization')
+          const { organizations } = get();
+          set({
+            organizations: [...organizations, organization],
+            totalCount: organizations.length + 1,
+          });
         },
 
         updateOrganization: (id, updates) => {
-          const { organizations } = get()
-          const updatedOrganizations = organizations.map(org =>
-            org.id === id ? { ...org, ...updates, updatedAt: new Date().toISOString() } : org
-          )
-          set({ organizations: updatedOrganizations }, false, 'updateOrganization')
+          const { organizations } = get();
+          const updatedOrganizations = organizations.map((org) =>
+            org.id === id ? { ...org, ...updates } : org
+          );
+          set({ organizations: updatedOrganizations });
         },
 
-        deleteOrganization: (id) => {
-          const { organizations } = get()
-          const filteredOrganizations = organizations.filter(org => org.id !== id)
-          set({ 
-            organizations: filteredOrganizations, 
-            totalCount: filteredOrganizations.length 
-          }, false, 'deleteOrganization')
+        deleteOrganization: async (website) => {
+          set({ isLoading: true, error: null });
+
+          try {
+            const response =
+              await organizationApi.deleteOrganization(website);
+
+            if (!response.ok) {
+              throw new Error(
+                response.error?.message ||
+                  'Failed to delete organization'
+              );
+            }
+
+            // Remove the organization from local state
+            const { organizations } = get();
+            const filteredOrganizations = organizations.filter(
+              (org) => org.website !== website
+            );
+
+            set({
+              organizations: filteredOrganizations,
+              totalCount: filteredOrganizations.length,
+              isLoading: false,
+            });
+          } catch (error) {
+            const errorMessage = handleApiError(error);
+            set({
+              error: errorMessage,
+              isLoading: false,
+            });
+            throw error;
+          }
         },
 
         setSelectedOrganization: (organization) => {
-          set({ selectedOrganization: organization }, false, 'setSelectedOrganization')
+          set({ selectedOrganization: organization });
         },
 
         setLoading: (loading) => {
-          set({ isLoading: loading }, false, 'setLoading')
+          set({ isLoading: loading });
         },
 
         setError: (error) => {
-          set({ error }, false, 'setError')
+          set({ error });
         },
 
-        fetchOrganizations: async () => {
-          set({ isLoading: true, error: null }, false, 'fetchOrganizations/start')
-          
+        setPagination: (pagination) => {
+          const currentPagination = get().pagination;
+          const newPagination = {
+            ...currentPagination,
+            ...pagination,
+          };
+
+          set({ pagination: newPagination });
+
+          // If itemsPerPage changed, reset to page 1 and refetch
+          if (
+            pagination.itemsPerPage &&
+            pagination.itemsPerPage !== currentPagination.itemsPerPage
+          ) {
+            set({ pagination: { ...newPagination, currentPage: 1 } });
+            // Refetch with new page size
+            get().fetchOrganizations(
+              1,
+              get().searchTerm,
+              pagination.itemsPerPage
+            );
+          }
+        },
+
+        setSearchTerm: (searchTerm) => {
+          set({ searchTerm });
+        },
+
+        refreshOrganizations: () => {
+          const { pagination, searchTerm } = get();
+          get().fetchOrganizations(
+            pagination.currentPage,
+            searchTerm,
+            pagination.itemsPerPage
+          );
+        },
+
+        fetchOrganizations: async (
+          page = 1,
+          search = '',
+          itemsPerPage?: number
+        ) => {
+          const currentState = get();
+          const { pagination } = get();
+          const limit = itemsPerPage || pagination.itemsPerPage;
+          const currentParams = {
+            page,
+            search,
+            itemsPerPage: limit,
+          };
+
+          // Prevent multiple simultaneous calls
+          if (currentState.isLoading) {
+            console.log(
+              'API call already in progress, skipping...',
+              currentParams
+            );
+            return;
+          }
+
+          // Prevent duplicate calls with same parameters
+          if (
+            currentState.lastFetchParams &&
+            JSON.stringify(currentState.lastFetchParams) ===
+              JSON.stringify(currentParams)
+          ) {
+            console.log(
+              'Duplicate API call prevented',
+              currentParams
+            );
+            return;
+          }
+
+          set({
+            isLoading: true,
+            error: null,
+            organizations: [],
+            lastFetchParams: currentParams,
+          });
+
           try {
-            const organizations = await fetchOrganizationsFromAPI()
-            set({ 
-              organizations, 
-              totalCount: organizations.length, 
-              isLoading: false 
-            }, false, 'fetchOrganizations/success')
+            const offset = (page - 1) * limit;
+
+            console.log('Fetching organizations with:', {
+              limit,
+              offset,
+              search: search || undefined,
+              currentPagination: pagination,
+              itemsPerPageParam: itemsPerPage,
+              pageParam: page,
+            });
+
+            const response = await adminApi.listOrganizations(
+              limit,
+              offset,
+              search || undefined
+            );
+
+            console.log('API Response:', {
+              organizationsCount: response.organizations.length,
+              pagination: response.pagination,
+              count: response.count,
+              limit: response.limit,
+              offset: response.offset,
+            });
+
+            const organizations = response.organizations.map(
+              transformApiOrganizationToStore
+            );
+
+            // Use pagination object directly like courses store
+            const totalItems =
+              response.pagination?.total || response.count;
+            const hasMore =
+              response.pagination?.has_more ||
+              response.offset + response.organizations.length <
+                response.count;
+
+            set({
+              organizations,
+              pagination: {
+                ...pagination,
+                currentPage: page,
+                totalItems,
+                hasMore,
+              },
+              isLoading: false,
+              lastFetchParams: null, // Clear after successful fetch
+            });
           } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : 'Failed to fetch organizations',
-              isLoading: false 
-            }, false, 'fetchOrganizations/error')
+            const errorMessage = handleApiError(error);
+            set({
+              error: errorMessage,
+              isLoading: false,
+              lastFetchParams: null, // Clear after error
+            });
           }
         },
 
         createOrganization: async (organizationData) => {
-          set({ isLoading: true, error: null }, false, 'createOrganization/start')
-          
+          set({ isLoading: true, error: null });
+
           try {
-            const newOrganization = await createOrganizationAPI(organizationData)
-            const { organizations } = get()
-            set({ 
-              organizations: [...organizations, newOrganization], 
+            const apiOrgData =
+              transformStoreOrganizationToApi(organizationData);
+            const response =
+              await organizationApi.addOrganization(apiOrgData);
+
+            if (!response.ok) {
+              throw new Error(
+                response.error?.message ||
+                  'Failed to create organization'
+              );
+            }
+
+            const newApiOrganization = response.data!;
+            const newOrganization = transformApiOrganizationToStore(
+              newApiOrganization
+            );
+
+            const { organizations } = get();
+            set({
+              organizations: [...organizations, newOrganization],
               totalCount: organizations.length + 1,
-              isLoading: false 
-            }, false, 'createOrganization/success')
+              isLoading: false,
+            });
           } catch (error) {
-            set({ 
-              error: error instanceof Error ? error.message : 'Failed to create organization',
-              isLoading: false 
-            }, false, 'createOrganization/error')
+            const errorMessage = handleApiError(error);
+            set({
+              error: errorMessage,
+              isLoading: false,
+            });
           }
-        }
+        },
+        editOrganization: async (
+          organizationId,
+          organizationData
+        ) => {
+          set({ isLoading: true, error: null });
+
+          try {
+            const apiOrgData = {
+              organization_id: organizationId,
+              name: organizationData.name,
+              website: organizationData.website,
+              sop_email: organizationData.sopEmail,
+            };
+            const response =
+              await organizationApi.editOrganization(apiOrgData);
+
+            if (!response.ok) {
+              throw new Error(
+                response.error?.message ||
+                  'Failed to edit organization'
+              );
+            }
+
+            const updatedApiOrganization = response.data!;
+            const updatedOrganization =
+              transformApiOrganizationToStore(updatedApiOrganization);
+
+            const { organizations } = get();
+            const updatedOrganizations = organizations.map((org) =>
+              org.id === organizationId ? updatedOrganization : org
+            );
+
+            set({
+              organizations: updatedOrganizations,
+              isLoading: false,
+            });
+          } catch (error) {
+            const errorMessage = handleApiError(error);
+            set({
+              error: errorMessage,
+              isLoading: false,
+            });
+            throw error;
+          }
+        },
+
+        resetSopPassword: async (organizationWebsite, newPassword, sopEmail) => {
+          set({ isLoading: true, error: null });
+
+          try {
+            await adminApi.resetSopPassword(
+              organizationWebsite,
+              newPassword,
+              sopEmail
+            );
+            set({ isLoading: false });
+          } catch (error) {
+            const errorMessage = handleApiError(error);
+            set({
+              error: errorMessage,
+              isLoading: false,
+            });
+            throw error;
+          }
+        },
       }),
       {
         name: 'organizations-storage',
-        partialize: (state) => ({ 
-          organizations: state.organizations,
-          selectedOrganization: state.selectedOrganization,
-          totalCount: state.totalCount
-        })
+        partialize: (state) => ({
+          // Only persist user preferences, not API data or pagination
+          searchTerm: state.searchTerm,
+          // Don't persist: organizations, pagination, totalCount, selectedOrganization
+          // These should be fresh on each page load
+        }),
       }
     ),
     {
-      name: 'organizations-store'
+      name: 'organizations-store',
     }
   )
-)
+);

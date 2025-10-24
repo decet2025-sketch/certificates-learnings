@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Shield, ArrowLeft, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/stores/authStore'
 
 export default function UnauthorizedPage() {
+  const { logout } = useAuthStore()
   const router = useRouter()
 
   const handleGoHome = () => {
@@ -13,6 +15,7 @@ export default function UnauthorizedPage() {
   }
 
   const handleLogout = () => {
+    logout()
     localStorage.removeItem('user')
     router.push('/')
   }

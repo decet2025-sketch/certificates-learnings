@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -11,46 +11,47 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { FormField } from '@/components/forms/FormField'
-import { SelectField } from '@/components/forms/FormField'
-import { LoadingButton } from '@/components/ui/loading'
-import { Plus, Globe, Building, Mail } from 'lucide-react'
-import { createOrganizationSchema, CreateOrganizationInput } from '@/lib/validations'
-import { useOrganizationsStore } from '@/stores/organizationsStore'
-import { useUIStore } from '@/stores/uiStore'
-import { showSuccessToast, showErrorToast } from '@/components/ui/toast'
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/forms/FormField';
+import { LoadingButton } from '@/components/ui/loading';
+import { Plus } from 'lucide-react';
+import {
+  createOrganizationSchema,
+  CreateOrganizationInput,
+} from '@/lib/validations';
+import { useOrganizationsStore } from '@/stores/organizationsStore';
+import { useUIStore } from '@/stores/uiStore';
+import {
+  showSuccessToast,
+  showErrorToast,
+} from '@/components/ui/toast';
 
 interface AddOrganizationModalProps {
-  children?: React.ReactNode
+  children?: React.ReactNode;
 }
 
-const statusOptions = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'pending', label: 'Pending' }
-]
-
-export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
-  const [open, setOpen] = useState(false)
-  const { createOrganization, isLoading } = useOrganizationsStore()
-  const { setModalOpen } = useUIStore()
+export function AddOrganizationModal({
+  children,
+}: AddOrganizationModalProps) {
+  const [open, setOpen] = useState(false);
+  const { createOrganization, isLoading } = useOrganizationsStore();
+  const { setModalOpen } = useUIStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset
+    reset,
   } = useForm<CreateOrganizationInput>({
     resolver: zodResolver(createOrganizationSchema),
     defaultValues: {
       name: '',
       website: '',
       sopEmail: '',
-      status: 'active'
-    }
-  })
+      sopPassword: '',
+    },
+  });
 
   const onSubmit = async (data: CreateOrganizationInput) => {
     try {
@@ -58,33 +59,34 @@ export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
         name: data.name,
         website: data.website,
         sopEmail: data.sopEmail,
-        status: data.status,
+        sopPassword: data.sopPassword,
+        status: 'active',
         totalLearners: 0,
-        totalCourses: 0
-      })
+        totalCourses: 0,
+      });
 
       showSuccessToast(
         'Organization Added',
         'The organization has been successfully added to the system.'
-      )
+      );
 
-      reset()
-      setOpen(false)
-      setModalOpen('addOrganization', false)
+      reset();
+      setOpen(false);
+      setModalOpen('addOrganization', false);
     } catch (error) {
-      console.error('Error adding organization:', error)
+      console.error('Error adding organization:', error);
       showErrorToast(
         'Error Adding Organization',
         'Failed to add the organization. Please try again.'
-      )
+      );
     }
-  }
+  };
 
   const handleClose = () => {
-    reset()
-    setOpen(false)
-    setModalOpen('addOrganization', false)
-  }
+    reset();
+    setOpen(false);
+    setModalOpen('addOrganization', false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -98,13 +100,18 @@ export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Add New Organization</DialogTitle>
+          <DialogTitle className="text-2xl">
+            Add New Organization
+          </DialogTitle>
           <DialogDescription>
             Fill in the details to add a new organization partner.
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6 py-4">
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="grid gap-6 py-4"
+        >
           <FormField
             name="name"
             label="Organization Name"
@@ -118,7 +125,7 @@ export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
           <FormField
             name="website"
             label="Website URL"
-            type="url"
+            type="text"
             placeholder="https://example.com"
             required
             register={register}
@@ -128,27 +135,28 @@ export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
 
           <FormField
             name="sopEmail"
-            label="SOP Email"
+            label="POC Email"
             type="email"
-            placeholder="sop@example.com"
+            placeholder="poc@example.com"
             required
             register={register}
             error={errors.sopEmail}
-            description="The email address for the Single Point of Contact (SOP) for this organization"
+            description="The email address for the Point of Contact (POC) for this organization"
           />
 
-          <SelectField
-            name="status"
-            label="Status"
-            options={statusOptions}
+          <FormField
+            name="sopPassword"
+            label="POC Password"
+            type="password"
+            placeholder="Enter secure password"
             required
             register={register}
-            error={errors.status}
-            description="The current status of the organization in the system"
+            error={errors.sopPassword}
+            description="A secure password for the POC account. Must be at least 8 characters with uppercase, lowercase, number, and special character."
           />
         </form>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="flex justify-end gap-2 mt-4">
           <Button
             type="button"
             variant="outline"
@@ -164,11 +172,10 @@ export function AddOrganizationModal({ children }: AddOrganizationModalProps) {
             onClick={handleSubmit(onSubmit)}
             className="flex items-center space-x-2"
           >
-            <Plus className="h-4 w-4" />
             <span>Add Organization</span>
           </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

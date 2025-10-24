@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthStore } from '@/stores/authStore';
 
 // API Configuration
 const API_BASE_URL = 'https://cloud.appwrite.io/v1/functions';
@@ -35,10 +36,10 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('admin');
-  const [organizationWebsite, setOrganizationWebsite] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { setUser } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,12 +47,6 @@ export default function SignInPage() {
     setError(null);
 
     try {
-      console.log('Starting authentication...', {
-        email,
-        role,
-        organizationWebsite,
-      });
-
       let actionData;
       if (role === 'admin') {
         actionData = {
@@ -59,18 +54,11 @@ export default function SignInPage() {
           payload: { email, name: 'Admin User', password },
         };
       } else if (role === 'sop') {
-        if (!organizationWebsite) {
-          setError('Organization website is required for SOP users');
-          setLoading(false);
-          return;
-        }
         actionData = {
           action: 'CREATE_SOP_USER',
           payload: {
             email,
-            name: 'SOP User',
             password,
-            organization_website: organizationWebsite,
           },
         };
       } else {
@@ -105,25 +93,28 @@ export default function SignInPage() {
           console.log(
             'Authentication successful, storing user data...'
           );
-          // Store user data in localStorage
-          localStorage.setItem(
-            'user',
-            JSON.stringify({
-              id: responseBody.data?.user_id || '1',
-              email: responseBody.data?.email || email,
-              name: responseBody.data?.name || 'User',
-              role: role,
-              organizationWebsite:
-                responseBody.data?.organization_website,
-              token: responseBody.data?.token || 'api-token',
-            })
-          );
+
+          // Use the auth store to set user data
+          const userData = {
+            id: responseBody.data?.user_id || '1',
+            email: responseBody.data?.email || email,
+            name: responseBody.data?.name || 'User',
+            role: role as 'admin' | 'sop',
+            apiToken: responseBody.data?.token || 'api-token',
+            organizationWebsite:
+              responseBody.data?.organization?.website ||
+              responseBody.data?.organization_website ||
+              '',
+          };
+
+          // Set user in auth store
+          setUser(userData);
 
           // Redirect based on role
           if (role === 'admin') {
-            router.push('/dashboard');
+            router.push('/courses');
           } else if (role === 'sop') {
-            router.push('/sop-dashboard');
+            router.push('/poc-dashboard/learners');
           }
         } else {
           console.log('Authentication failed:', responseBody.error);
@@ -194,31 +185,11 @@ export default function SignInPage() {
               </SelectTrigger>
               <SelectContent className="glass-card border-white/20">
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="sop">SOP User</SelectItem>
+                <SelectItem value="sop">POC User</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {role === 'sop' && (
-            <div>
-              <Label
-                htmlFor="organizationWebsite"
-                className="text-gray-700"
-              >
-                Organization Website
-              </Label>
-              <Input
-                id="organizationWebsite"
-                type="text"
-                placeholder="example.com"
-                required
-                value={organizationWebsite}
-                onChange={(e) =>
-                  setOrganizationWebsite(e.target.value)
-                }
-                className="mt-1"
-              />
-            </div>
-          )}
+
           <Button
             type="submit"
             className="w-full h-11 text-lg font-semibold rounded-xl hover-lift modern-shadow-lg"
@@ -227,12 +198,6 @@ export default function SignInPage() {
             {loading ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
-        <div className="text-center text-sm text-gray-600 space-y-2">
-          <p>
-            <strong>API Endpoint:</strong>
-          </p>
-          <p className="text-xs break-all">{ADMIN_ROUTER}</p>
-        </div>
       </div>
     </div>
   );

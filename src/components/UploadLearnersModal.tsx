@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useState, useCallback } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -11,30 +11,49 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { LoadingButton } from '@/components/ui/loading'
-import { Upload, FileText, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
-import { useDropzone, FileRejection } from 'react-dropzone'
-import { uploadLearnersSchema, UploadLearnersInput } from '@/lib/validations'
-import { useLearnersStore } from '@/stores/learnersStore'
-import { useUIStore } from '@/stores/uiStore'
-import { showSuccessToast, showErrorToast, showWarningToast } from '@/components/ui/toast'
-import { cn } from '@/lib/utils'
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { LoadingButton } from '@/components/ui/loading';
+import {
+  Upload,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+} from 'lucide-react';
+import { useDropzone, FileRejection } from 'react-dropzone';
+import {
+  uploadLearnersSchema,
+  UploadLearnersInput,
+} from '@/lib/validations';
+import { useLearnersStore } from '@/stores/learnersStore';
+import { useUIStore } from '@/stores/uiStore';
+import {
+  showSuccessToast,
+  showErrorToast,
+  showWarningToast,
+} from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
 
 interface UploadLearnersModalProps {
-  children?: React.ReactNode
+  children?: React.ReactNode;
+  courseId?: string;
 }
 
-export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
-  const [open, setOpen] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState('')
-  
-  const { uploadLearners, isLoading } = useLearnersStore()
-  const { setModalOpen } = useUIStore()
+export function UploadLearnersModal({
+  children,
+  courseId,
+}: UploadLearnersModalProps) {
+  const [open, setOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<
+    'idle' | 'success' | 'error'
+  >('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const { uploadLearners, isLoading } = useLearnersStore();
+  const { setModalOpen } = useUIStore();
 
   const {
     register,
@@ -42,120 +61,141 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
     formState: { errors, isSubmitting },
     reset,
     watch,
-    setValue
+    setValue,
   } = useForm<UploadLearnersInput>({
     resolver: zodResolver(uploadLearnersSchema),
     defaultValues: {
-      file: undefined
-    }
-  })
+      file: undefined,
+    },
+  });
 
-  const file = watch('file')
+  const file = watch('file');
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      setValue('file', acceptedFiles[0])
-      setUploadStatus('idle')
-      setErrorMessage('')
-    }
-  }, [setValue])
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        setValue('file', acceptedFiles[0]);
+        setUploadStatus('idle');
+        setErrorMessage('');
+      }
+    },
+    [setValue]
+  );
 
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    fileRejections,
+  } = useDropzone({
     onDrop,
     accept: {
-      'text/csv': ['.csv']
+      'text/csv': ['.csv'],
     },
     maxFiles: 1,
-    maxSize: 5 * 1024 * 1024 // 5MB
-  })
+    maxSize: 5 * 1024 * 1024, // 5MB
+  });
 
   const onSubmit = async (data: UploadLearnersInput) => {
-    if (!data.file) return
+    if (!data.file) return;
 
-    let progressInterval: NodeJS.Timeout | null = null
+    if (!courseId) {
+      showErrorToast(
+        'Missing Information',
+        'Course ID is required for uploading learners.'
+      );
+      return;
+    }
+
+    let progressInterval: NodeJS.Timeout | null = null;
 
     try {
-      setUploadProgress(0)
-      setUploadStatus('idle')
-      setErrorMessage('')
+      setUploadProgress(0);
+      setUploadStatus('idle');
+      setErrorMessage('');
 
       // Simulate upload progress
       progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
+        setUploadProgress((prev) => {
           if (prev >= 90) {
-            if (progressInterval) clearInterval(progressInterval)
-            return prev
+            if (progressInterval) clearInterval(progressInterval);
+            return prev;
           }
-          return prev + 10
-        })
-      }, 200)
+          return prev + 10;
+        });
+      }, 200);
 
-      await uploadLearners(data.file)
-      
-      if (progressInterval) clearInterval(progressInterval)
-      setUploadProgress(100)
-      setUploadStatus('success')
+      await uploadLearners(data.file, courseId);
+
+      if (progressInterval) clearInterval(progressInterval);
+      setUploadProgress(100);
+      setUploadStatus('success');
 
       showSuccessToast(
         'Learners Uploaded',
         'The learners have been successfully uploaded to the system.'
-      )
+      );
 
       setTimeout(() => {
-        reset()
-        setOpen(false)
-        setModalOpen('uploadLearners', false)
-        setUploadProgress(0)
-        setUploadStatus('idle')
-      }, 2000)
+        reset();
+        setOpen(false);
+        setModalOpen('uploadLearners', false);
+        setUploadProgress(0);
+        setUploadStatus('idle');
+      }, 2000);
     } catch (error) {
-      if (progressInterval) clearInterval(progressInterval)
-      setUploadStatus('error')
-      setErrorMessage('Failed to upload learners. Please check your file format and try again.')
-      
+      if (progressInterval) clearInterval(progressInterval);
+      setUploadStatus('error');
+      setErrorMessage(
+        'Failed to upload learners. Please check your file format and try again.'
+      );
+
       showErrorToast(
         'Upload Failed',
         'Failed to upload learners. Please check your file format and try again.'
-      )
+      );
     }
-  }
+  };
 
   const handleClose = () => {
-    reset()
-    setOpen(false)
-    setModalOpen('uploadLearners', false)
-    setUploadProgress(0)
-    setUploadStatus('idle')
-    setErrorMessage('')
-  }
+    reset();
+    setOpen(false);
+    setModalOpen('uploadLearners', false);
+    setUploadProgress(0);
+    setUploadStatus('idle');
+    setErrorMessage('');
+  };
 
   const getStatusIcon = () => {
     switch (uploadStatus) {
       case 'success':
-        return <CheckCircle2 className="h-8 w-8 text-green-500" />
+        return <CheckCircle2 className="h-8 w-8 text-green-500" />;
       case 'error':
-        return <XCircle className="h-8 w-8 text-red-500" />
+        return <XCircle className="h-8 w-8 text-red-500" />;
       default:
-        return <FileText className="h-8 w-8 text-blue-500" />
+        return <FileText className="h-8 w-8 text-blue-500" />;
     }
-  }
+  };
 
   const getStatusMessage = () => {
     switch (uploadStatus) {
       case 'success':
-        return 'Upload completed successfully!'
+        return 'Upload completed successfully!';
       case 'error':
-        return errorMessage
+        return errorMessage;
       default:
-        return 'Upload your CSV file to add learners to the system'
+        return 'Upload your CSV file to add learners to the system';
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="outline" className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            className="flex items-center space-x-2"
+          >
             <Upload className="h-4 w-4" />
             <span>Upload Learners</span>
           </Button>
@@ -163,16 +203,21 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Upload Learners (CSV)</DialogTitle>
+          <DialogTitle className="text-2xl">
+            Upload Learners (CSV)
+          </DialogTitle>
           <DialogDescription>
-            Upload a CSV file containing learner data. Please ensure the file follows the specified format.
+            Upload a CSV file containing learner data. Please ensure
+            the file follows the specified format.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-6 py-4">
           {/* CSV Requirements */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">CSV File Requirements:</h4>
+            <h4 className="font-medium text-blue-900 mb-2">
+              CSV File Requirements:
+            </h4>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• File must be in CSV format (.csv)</li>
               <li>• Maximum file size: 5MB</li>
@@ -219,14 +264,19 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="h-5 w-5 text-red-500" />
-                <h4 className="font-medium text-red-900">File Rejected</h4>
+                <h4 className="font-medium text-red-900">
+                  File Rejected
+                </h4>
               </div>
               <ul className="mt-2 text-sm text-red-800 space-y-1">
-                {fileRejections.map(({ file, errors }: FileRejection) => (
-                  <li key={file.name}>
-                    {file.name}: {errors.map((e: any) => e.message).join(', ')}
-                  </li>
-                ))}
+                {fileRejections.map(
+                  ({ file, errors }: FileRejection) => (
+                    <li key={file.name}>
+                      {file.name}:{' '}
+                      {errors.map((e: any) => e.message).join(', ')}
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           )}
@@ -236,7 +286,9 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center space-x-2">
                 <XCircle className="h-5 w-5 text-red-500" />
-                <h4 className="font-medium text-red-900">Validation Error</h4>
+                <h4 className="font-medium text-red-900">
+                  Validation Error
+                </h4>
               </div>
               <p className="mt-2 text-sm text-red-800">
                 {errors.file.message}
@@ -260,10 +312,13 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
-                <h4 className="font-medium text-green-900">Upload Successful</h4>
+                <h4 className="font-medium text-green-900">
+                  Upload Successful
+                </h4>
               </div>
               <p className="mt-2 text-sm text-green-800">
-                Your learners have been successfully uploaded to the system.
+                Your learners have been successfully uploaded to the
+                system.
               </p>
             </div>
           )}
@@ -286,11 +341,10 @@ export function UploadLearnersModal({ children }: UploadLearnersModalProps) {
             disabled={!file || uploadStatus === 'success'}
             className="flex items-center space-x-2"
           >
-            <Upload className="h-4 w-4" />
             <span>Upload CSV</span>
           </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

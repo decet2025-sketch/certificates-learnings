@@ -15,9 +15,7 @@ const mockLearnerProgress: LearnerProgress[] = [
     enrollmentDate: '2024-01-15',
     completionStatus: 'completed',
     certificateStatus: 'issued',
-    progress: 100,
-    lastActivity: '2024-02-20',
-    certificateId: 'CERT-2024-001',
+    progress: 100,    certificateId: 'CERT-2024-001',
     completionDate: '2024-02-20'
   },
   {
@@ -31,9 +29,7 @@ const mockLearnerProgress: LearnerProgress[] = [
     enrollmentDate: '2024-01-20',
     completionStatus: 'in-progress',
     certificateStatus: 'pending',
-    progress: 65,
-    lastActivity: '2024-02-18',
-    certificateId: 'CERT-2024-002',
+    progress: 65,    certificateId: 'CERT-2024-002',
     completionDate: '2024-02-18'
   },
   {
@@ -47,9 +43,7 @@ const mockLearnerProgress: LearnerProgress[] = [
     enrollmentDate: '2024-01-25',
     completionStatus: 'not-started',
     certificateStatus: 'not-eligible',
-    progress: 0,
-    lastActivity: '2024-01-25'
-  }
+    progress: 0,  }
 ]
 
 const fetchLearnerProgressFromAPI = async (): Promise<LearnerProgress[]> => {

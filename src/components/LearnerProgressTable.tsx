@@ -1,17 +1,23 @@
-'use client'
+'use client';
 
-import { useState, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useState, useMemo } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -19,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,42 +33,39 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { 
-  Search, 
-  MoreHorizontal, 
-  Eye, 
-  Download, 
-  Edit, 
+} from '@/components/ui/dropdown-menu';
+import {
+  Search,
+  MoreHorizontal,
+  Eye,
+  Download,
+  Edit,
   Trash2,
   Users,
-  Calendar,
   Award,
   CheckCircle,
   Clock,
   AlertCircle,
-  Filter,
   ChevronLeft,
   ChevronRight,
-  X,
+  BookOpen,
   Building2,
-  BookOpen
-} from 'lucide-react'
-import { CertificatePreviewModal } from '@/components/CertificatePreviewModal'
+  Calendar,
+} from 'lucide-react';
+import { CertificatePreviewModal } from '@/components/CertificatePreviewModal';
 
 interface LearnerProgress {
-  id: string
-  name: string
-  email: string
-  organization: string
-  course: string
-  enrollmentDate: string
-  completionStatus: 'completed' | 'in-progress' | 'not-started'
-  certificateStatus: 'issued' | 'pending' | 'not-eligible'
-  progress: number
-  lastActivity: string
-  certificateId?: string
-  completionDate?: string
+  id: string;
+  name: string;
+  email: string;
+  organization: string;
+  course: string;
+  enrollmentDate: string;
+  completionStatus: 'completed' | 'in-progress' | 'not-started';
+  certificateStatus: 'issued' | 'pending' | 'not-eligible';
+  progress: number;
+  certificateId?: string;
+  completionDate?: string;
 }
 
 // Mock data for demonstration
@@ -77,9 +80,8 @@ const MOCK_LEARNER_PROGRESS: LearnerProgress[] = [
     completionStatus: 'completed',
     certificateStatus: 'issued',
     progress: 100,
-    lastActivity: '2024-02-20',
     certificateId: 'CERT-2024-001',
-    completionDate: '2024-02-20'
+    completionDate: '2024-02-20',
   },
   {
     id: '2',
@@ -91,9 +93,8 @@ const MOCK_LEARNER_PROGRESS: LearnerProgress[] = [
     completionStatus: 'in-progress',
     certificateStatus: 'pending',
     progress: 65,
-    lastActivity: '2024-02-18',
     certificateId: 'CERT-2024-002',
-    completionDate: '2024-02-18'
+    completionDate: '2024-02-18',
   },
   {
     id: '3',
@@ -105,9 +106,8 @@ const MOCK_LEARNER_PROGRESS: LearnerProgress[] = [
     completionStatus: 'not-started',
     certificateStatus: 'not-eligible',
     progress: 0,
-    lastActivity: '2024-01-25',
     certificateId: undefined,
-    completionDate: undefined
+    completionDate: undefined,
   },
   {
     id: '4',
@@ -119,9 +119,8 @@ const MOCK_LEARNER_PROGRESS: LearnerProgress[] = [
     completionStatus: 'completed',
     certificateStatus: 'issued',
     progress: 100,
-    lastActivity: '2024-02-15',
     certificateId: 'CERT-2024-003',
-    completionDate: '2024-02-15'
+    completionDate: '2024-02-15',
   },
   {
     id: '5',
@@ -133,206 +132,142 @@ const MOCK_LEARNER_PROGRESS: LearnerProgress[] = [
     completionStatus: 'in-progress',
     certificateStatus: 'pending',
     progress: 45,
-    lastActivity: '2024-02-18',
     certificateId: 'CERT-2024-004',
-    completionDate: '2024-02-18'
-  }
-]
-
-const ORGANIZATIONS = ['All', 'Acme Corp', 'TechCorp Inc', 'StartupCo', 'Enterprise Solutions']
-const COURSES = ['All', 'Advanced React Development', 'JavaScript Fundamentals', 'Python for Data Science', 'Node.js Backend Development']
+    completionDate: '2024-02-18',
+  },
+];
 
 interface LearnerProgressTableProps {
-  className?: string
+  className?: string;
 }
 
-export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedOrganization, setSelectedOrganization] = useState('All')
-  const [selectedCourse, setSelectedCourse] = useState('All')
-  const [completionStatus, setCompletionStatus] = useState<{
-    completed: boolean
-    inProgress: boolean
-    notStarted: boolean
-  }>({
-    completed: false,
-    inProgress: false,
-    notStarted: false
-  })
-  const [certificateStatus, setCertificateStatus] = useState<{
-    issued: boolean
-    pending: boolean
-    notEligible: boolean
-  }>({
-    issued: false,
-    pending: false,
-    notEligible: false
-  })
-  const [dateRange, setDateRange] = useState<{
-    startDate: string
-    endDate: string
-  }>({
-    startDate: '',
-    endDate: ''
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(5)
-  const [showFilters, setShowFilters] = useState(false)
-  const [selectedLearner, setSelectedLearner] = useState<LearnerProgress | null>(null)
-  const [isCertificateModalOpen, setIsCertificateModalOpen] = useState(false)
+export function LearnerProgressTable({
+  className,
+}: LearnerProgressTableProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [selectedLearner, setSelectedLearner] =
+    useState<LearnerProgress | null>(null);
+  const [isCertificateModalOpen, setIsCertificateModalOpen] =
+    useState(false);
 
   const filteredLearners = useMemo(() => {
-    return MOCK_LEARNER_PROGRESS.filter(learner => {
+    return MOCK_LEARNER_PROGRESS.filter((learner) => {
       // Search filter
-      const matchesSearch = 
-        learner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        learner.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        learner.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        learner.course.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      // Organization filter
-      const matchesOrganization = selectedOrganization === 'All' || learner.organization === selectedOrganization
-      
-      // Course filter
-      const matchesCourse = selectedCourse === 'All' || learner.course === selectedCourse
-      
-      // Completion status filter
-      const hasCompletionFilter = Object.values(completionStatus).some(Boolean)
-      const matchesCompletion = !hasCompletionFilter || (
-        (learner.completionStatus === 'completed' && completionStatus.completed) ||
-        (learner.completionStatus === 'in-progress' && completionStatus.inProgress) ||
-        (learner.completionStatus === 'not-started' && completionStatus.notStarted)
-      )
-      
-      // Certificate status filter
-      const hasCertificateFilter = Object.values(certificateStatus).some(Boolean)
-      const matchesCertificate = !hasCertificateFilter || (
-        (learner.certificateStatus === 'issued' && certificateStatus.issued) ||
-        (learner.certificateStatus === 'pending' && certificateStatus.pending) ||
-        (learner.certificateStatus === 'not-eligible' && certificateStatus.notEligible)
-      )
-      
-      // Date range filter
-      const matchesDateRange = !dateRange.startDate || !dateRange.endDate || 
-        (learner.enrollmentDate >= dateRange.startDate && learner.enrollmentDate <= dateRange.endDate)
-      
-      return matchesSearch && matchesOrganization && matchesCourse && matchesCompletion && matchesCertificate && matchesDateRange
-    })
-  }, [searchTerm, selectedOrganization, selectedCourse, completionStatus, certificateStatus, dateRange])
+      const matchesSearch =
+        learner.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        learner.email
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        learner.organization
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        learner.course
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+
+      return matchesSearch;
+    });
+  }, [searchTerm]);
 
   const paginatedLearners = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredLearners.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredLearners, currentPage, itemsPerPage])
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredLearners.slice(
+      startIndex,
+      startIndex + itemsPerPage
+    );
+  }, [filteredLearners, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredLearners.length / itemsPerPage)
+  const totalPages = Math.ceil(
+    filteredLearners.length / itemsPerPage
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600 bg-green-50'
+        return 'text-green-600 bg-green-50';
       case 'in-progress':
-        return 'text-blue-600 bg-blue-50'
+        return 'text-blue-600 bg-blue-50';
       case 'not-started':
-        return 'text-gray-600 bg-gray-50'
+        return 'text-gray-600 bg-gray-50';
       case 'issued':
-        return 'text-green-600 bg-green-50'
+        return 'text-green-600 bg-green-50';
       case 'pending':
-        return 'text-yellow-600 bg-yellow-50'
+        return 'text-yellow-600 bg-yellow-50';
       case 'not-eligible':
-        return 'text-red-600 bg-red-50'
+        return 'text-red-600 bg-red-50';
       default:
-        return 'text-gray-600 bg-gray-50'
+        return 'text-gray-600 bg-gray-50';
     }
-  }
+  };
 
   const getStatusText = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'Completed'
+        return 'Completed';
       case 'in-progress':
-        return 'In Progress'
+        return 'In Progress';
       case 'not-started':
-        return 'Not Started'
+        return 'Not Started';
       case 'issued':
-        return 'Issued'
+        return 'Issued';
       case 'pending':
-        return 'Pending'
+        return 'Pending';
       case 'not-eligible':
-        return 'Not Eligible'
+        return 'Not Eligible';
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-3 w-3" />
+        return <CheckCircle className="h-3 w-3" />;
       case 'in-progress':
-        return <Clock className="h-3 w-3" />
+        return <Clock className="h-3 w-3" />;
       case 'not-started':
-        return <AlertCircle className="h-3 w-3" />
+        return <AlertCircle className="h-3 w-3" />;
       case 'issued':
-        return <Award className="h-3 w-3" />
+        return <Award className="h-3 w-3" />;
       case 'pending':
-        return <Clock className="h-3 w-3" />
+        return <Clock className="h-3 w-3" />;
       case 'not-eligible':
-        return <AlertCircle className="h-3 w-3" />
+        return <AlertCircle className="h-3 w-3" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
-  const clearFilters = () => {
-    setSearchTerm('')
-    setSelectedOrganization('All')
-    setSelectedCourse('All')
-    setCompletionStatus({
-      completed: false,
-      inProgress: false,
-      notStarted: false
-    })
-    setCertificateStatus({
-      issued: false,
-      pending: false,
-      notEligible: false
-    })
-    setDateRange({
-      startDate: '',
-      endDate: ''
-    })
-    setCurrentPage(1)
-  }
-
-  const hasActiveFilters = searchTerm || selectedOrganization !== 'All' || selectedCourse !== 'All' ||
-    Object.values(completionStatus).some(Boolean) || Object.values(certificateStatus).some(Boolean) ||
-    dateRange.startDate || dateRange.endDate
+  const hasActiveFilters = searchTerm;
 
   const handleView = (learner: LearnerProgress) => {
-    console.log('View learner:', learner)
+    console.log('View learner:', learner);
     // TODO: Implement view functionality
-  }
+  };
 
   const handleDownload = (learner: LearnerProgress) => {
-    console.log('Download certificate for:', learner)
+    console.log('Download certificate for:', learner);
     // TODO: Implement download functionality
-  }
+  };
 
   const handleEdit = (learner: LearnerProgress) => {
-    console.log('Edit learner:', learner)
+    console.log('Edit learner:', learner);
     // TODO: Implement edit functionality
-  }
+  };
 
   const handleDelete = (learner: LearnerProgress) => {
-    console.log('Delete learner:', learner)
+    console.log('Delete learner:', learner);
     // TODO: Implement delete functionality
-  }
+  };
 
   const handleCertificatePreview = (learner: LearnerProgress) => {
-    setSelectedLearner(learner)
-    setIsCertificateModalOpen(true)
-  }
+    setSelectedLearner(learner);
+    setIsCertificateModalOpen(true);
+  };
 
   return (
     <Card className={className}>
@@ -342,253 +277,40 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
           <span>Learner Progress</span>
         </CardTitle>
         <CardDescription className="text-sm sm:text-base">
-          Track learner progress and certificate status across all courses
+          Track learner progress and certificate status across all
+          courses
         </CardDescription>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
-        {/* Search and Filter Controls */}
-        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+        {/* Search Controls */}
+        <div className="mb-4 sm:mb-6">
           {/* Search Bar */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search learners..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 text-sm sm:text-base h-10 sm:h-11"
-              />
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 text-sm sm:text-base px-3 sm:px-4 h-10 sm:h-11 min-w-[44px]"
-              >
-                <Filter className="h-4 w-4" />
-                <span className="hidden xs:inline sm:hidden lg:inline">Filters</span>
-                {hasActiveFilters && (
-                  <div className="h-2 w-2 bg-primary rounded-full ml-1"></div>
-                )}
-              </Button>
-              {hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="flex items-center space-x-2 text-sm sm:text-base px-3 sm:px-4 h-10 sm:h-11 min-w-[44px]"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="hidden xs:inline sm:hidden lg:inline">Clear</span>
-                </Button>
-              )}
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search learners, courses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 text-sm sm:text-base h-10 sm:h-11"
+            />
           </div>
-
-          {/* Advanced Filters */}
-          {showFilters && (
-            <div className="border rounded-lg p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5 bg-muted/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm sm:text-base font-medium">Advanced Filters</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFilters(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Filter Grid - Enhanced Responsive Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
-                {/* Organization Filter */}
-                <div className="space-y-2 sm:space-y-3">
-                  <label className="text-xs sm:text-sm font-medium flex items-center space-x-1 sm:space-x-2">
-                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Organization</span>
-                  </label>
-                  <Select value={selectedOrganization} onValueChange={setSelectedOrganization}>
-                    <SelectTrigger className="text-sm h-10 sm:h-11">
-                      <SelectValue placeholder="Select organization" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORGANIZATIONS.map((org) => (
-                        <SelectItem key={org} value={org} className="text-sm">
-                          {org}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Course Filter */}
-                <div className="space-y-2 sm:space-y-3">
-                  <label className="text-xs sm:text-sm font-medium flex items-center space-x-1 sm:space-x-2">
-                    <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Course</span>
-                  </label>
-                  <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                    <SelectTrigger className="text-sm h-10 sm:h-11">
-                      <SelectValue placeholder="Select course" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COURSES.map((course) => (
-                        <SelectItem key={course} value={course} className="text-sm">
-                          {course}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Date Range Filter - Enhanced Mobile Layout */}
-                <div className="space-y-2 sm:space-y-3 md:col-span-2 xl:col-span-1">
-                  <label className="text-xs sm:text-sm font-medium flex items-center space-x-1 sm:space-x-2">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Enrollment Date Range</span>
-                  </label>
-                  <div className="space-y-2 sm:space-y-3">
-                    <Input
-                      type="date"
-                      placeholder="Start date"
-                      value={dateRange.startDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="text-xs sm:text-sm h-10 sm:h-11"
-                    />
-                    <Input
-                      type="date"
-                      placeholder="End date"
-                      value={dateRange.endDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                      className="text-xs sm:text-sm h-10 sm:h-11"
-                    />
-                  </div>
-                </div>
-
-                {/* Completion Status Filters - Enhanced Layout */}
-                <div className="space-y-2 sm:space-y-3">
-                  <label className="text-xs sm:text-sm font-medium">Completion Status</label>
-                  <div className="space-y-2 sm:space-y-3">
-                    <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                      <Checkbox
-                        id="completed"
-                        checked={completionStatus.completed}
-                        onCheckedChange={(checked) => 
-                          setCompletionStatus(prev => ({ ...prev, completed: !!checked }))
-                        }
-                        className="h-4 w-4 sm:h-5 sm:w-5"
-                      />
-                      <label htmlFor="completed" className="text-xs sm:text-sm cursor-pointer flex-1">
-                        Completed
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                      <Checkbox
-                        id="in-progress"
-                        checked={completionStatus.inProgress}
-                        onCheckedChange={(checked) => 
-                          setCompletionStatus(prev => ({ ...prev, inProgress: !!checked }))
-                        }
-                        className="h-4 w-4 sm:h-5 sm:w-5"
-                      />
-                      <label htmlFor="in-progress" className="text-xs sm:text-sm cursor-pointer flex-1">
-                        In Progress
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                      <Checkbox
-                        id="not-started"
-                        checked={completionStatus.notStarted}
-                        onCheckedChange={(checked) => 
-                          setCompletionStatus(prev => ({ ...prev, notStarted: !!checked }))
-                        }
-                        className="h-4 w-4 sm:h-5 sm:w-5"
-                      />
-                      <label htmlFor="not-started" className="text-xs sm:text-sm cursor-pointer flex-1">
-                        Not Started
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Certificate Status Filters - Enhanced Layout */}
-              <div className="space-y-2 sm:space-y-3 border-t pt-4">
-                <label className="text-xs sm:text-sm font-medium">Certificate Status</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      id="issued"
-                      checked={certificateStatus.issued}
-                      onCheckedChange={(checked) => 
-                        setCertificateStatus(prev => ({ ...prev, issued: !!checked }))
-                      }
-                      className="h-4 w-4 sm:h-5 sm:w-5"
-                    />
-                    <label htmlFor="issued" className="text-xs sm:text-sm cursor-pointer flex-1">
-                      Issued
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      id="pending"
-                      checked={certificateStatus.pending}
-                      onCheckedChange={(checked) => 
-                        setCertificateStatus(prev => ({ ...prev, pending: !!checked }))
-                      }
-                      className="h-4 w-4 sm:h-5 sm:w-5"
-                    />
-                    <label htmlFor="pending" className="text-xs sm:text-sm cursor-pointer flex-1">
-                      Pending
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      id="not-eligible"
-                      checked={certificateStatus.notEligible}
-                      onCheckedChange={(checked) => 
-                        setCertificateStatus(prev => ({ ...prev, notEligible: !!checked }))
-                      }
-                      className="h-4 w-4 sm:h-5 sm:w-5"
-                    />
-                    <label htmlFor="not-eligible" className="text-xs sm:text-sm cursor-pointer flex-1">
-                      Not Eligible
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Results Summary */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+        <div className="mb-4">
           <div className="text-xs sm:text-sm text-muted-foreground">
-            {filteredLearners.length} learner{filteredLearners.length !== 1 ? 's' : ''} found
-            {hasActiveFilters && ' (filtered)'}
+            {filteredLearners.length} learner
+            {filteredLearners.length !== 1 ? 's' : ''} found
           </div>
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="text-primary hover:text-primary/80 text-xs sm:text-sm h-8"
-            >
-              Clear all filters
-            </Button>
-          )}
         </div>
 
         {/* Table */}
         {filteredLearners.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <Users className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground text-sm sm:text-base">No learners found</p>
-            {hasActiveFilters && (
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Try adjusting your filters
-              </p>
-            )}
+            <p className="text-muted-foreground text-sm sm:text-base">
+              No learners found
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -598,14 +320,30 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">Learner</TableHead>
-                      <TableHead className="w-[150px]">Organization</TableHead>
-                      <TableHead className="w-[200px]">Course</TableHead>
-                      <TableHead className="w-[120px]">Enrollment Date</TableHead>
-                      <TableHead className="w-[100px]">Progress</TableHead>
-                      <TableHead className="w-[120px]">Completion Status</TableHead>
-                      <TableHead className="w-[120px]">Certificate Status</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead className="w-[200px]">
+                        Learner
+                      </TableHead>
+                      <TableHead className="w-[150px]">
+                        Organization
+                      </TableHead>
+                      <TableHead className="w-[200px]">
+                        Course
+                      </TableHead>
+                      <TableHead className="w-[120px]">
+                        Enrollment Date
+                      </TableHead>
+                      <TableHead className="w-[100px]">
+                        Progress
+                      </TableHead>
+                      <TableHead className="w-[120px]">
+                        Completion Status
+                      </TableHead>
+                      <TableHead className="w-[120px]">
+                        Certificate Status
+                      </TableHead>
+                      <TableHead className="w-[100px]">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -613,64 +351,107 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                       <TableRow key={learner.id}>
                         <TableCell className="font-medium">
                           <div>
-                            <div className="font-semibold">{learner.name}</div>
-                            <div className="text-sm text-muted-foreground">{learner.email}</div>
+                            <div className="font-semibold">
+                              {learner.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {learner.email}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>{learner.organization}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{learner.course}</TableCell>
-                        <TableCell>{new Date(learner.enrollmentDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {learner.course}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(
+                            learner.enrollmentDate
+                          ).toLocaleDateString()}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
+                              <div
                                 className="bg-primary h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${learner.progress}%` }}
+                                style={{
+                                  width: `${learner.progress}%`,
+                                }}
                               />
                             </div>
-                            <span className="text-sm text-muted-foreground">{learner.progress}%</span>
+                            <span className="text-sm text-muted-foreground">
+                              {learner.progress}%
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.completionStatus)}`}>
+                          <span
+                            className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.completionStatus)}`}
+                          >
                             {getStatusIcon(learner.completionStatus)}
-                            <span>{getStatusText(learner.completionStatus)}</span>
+                            <span>
+                              {getStatusText(
+                                learner.completionStatus
+                              )}
+                            </span>
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.certificateStatus)}`}>
+                          <span
+                            className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.certificateStatus)}`}
+                          >
                             {getStatusIcon(learner.certificateStatus)}
-                            <span>{getStatusText(learner.certificateStatus)}</span>
+                            <span>
+                              {getStatusText(
+                                learner.certificateStatus
+                              )}
+                            </span>
                           </span>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuLabel>
+                                Actions
+                              </DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleView(learner)}>
+                              <DropdownMenuItem
+                                onClick={() => handleView(learner)}
+                              >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCertificatePreview(learner)}>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleCertificatePreview(learner)
+                                }
+                              >
                                 <Award className="mr-2 h-4 w-4" />
                                 View Certificate
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownload(learner)}>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDownload(learner)
+                                }
+                              >
                                 <Download className="mr-2 h-4 w-4" />
                                 Download Certificate
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleEdit(learner)}>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(learner)}
+                              >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDelete(learner)}
                                 className="text-red-600"
                               >
@@ -695,36 +476,55 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm sm:text-base truncate">{learner.name}</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{learner.email}</p>
+                        <h3 className="font-semibold text-sm sm:text-base truncate">
+                          {learner.name}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                          {learner.email}
+                        </p>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuLabel>
+                            Actions
+                          </DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleView(learner)}>
+                          <DropdownMenuItem
+                            onClick={() => handleView(learner)}
+                          >
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleCertificatePreview(learner)}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleCertificatePreview(learner)
+                            }
+                          >
                             <Award className="mr-2 h-4 w-4" />
                             View Certificate
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownload(learner)}>
+                          <DropdownMenuItem
+                            onClick={() => handleDownload(learner)}
+                          >
                             <Download className="mr-2 h-4 w-4" />
                             Download Certificate
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleEdit(learner)}>
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(learner)}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDelete(learner)}
                             className="text-red-600"
                           >
@@ -739,22 +539,30 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs sm:text-sm text-muted-foreground truncate">{learner.course}</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                          {learner.course}
+                        </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs sm:text-sm text-muted-foreground truncate">{learner.organization}</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                          {learner.organization}
+                        </span>
                       </div>
                     </div>
 
                     {/* Progress */}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs sm:text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{learner.progress}%</span>
+                        <span className="text-muted-foreground">
+                          Progress
+                        </span>
+                        <span className="font-medium">
+                          {learner.progress}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-primary h-2 rounded-full transition-all duration-300"
                           style={{ width: `${learner.progress}%` }}
                         />
@@ -763,20 +571,33 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
 
                     {/* Status Badges */}
                     <div className="flex flex-wrap gap-2">
-                      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.completionStatus)}`}>
+                      <span
+                        className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.completionStatus)}`}
+                      >
                         {getStatusIcon(learner.completionStatus)}
-                        <span>{getStatusText(learner.completionStatus)}</span>
+                        <span>
+                          {getStatusText(learner.completionStatus)}
+                        </span>
                       </span>
-                      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.certificateStatus)}`}>
+                      <span
+                        className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(learner.certificateStatus)}`}
+                      >
                         {getStatusIcon(learner.certificateStatus)}
-                        <span>{getStatusText(learner.certificateStatus)}</span>
+                        <span>
+                          {getStatusText(learner.certificateStatus)}
+                        </span>
                       </span>
                     </div>
 
                     {/* Enrollment Date */}
                     <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4 flex-shrink-0" />
-                      <span>Enrolled: {new Date(learner.enrollmentDate).toLocaleDateString()}</span>
+                      <span>
+                        Enrolled:{' '}
+                        {new Date(
+                          learner.enrollmentDate
+                        ).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -793,7 +614,9 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                     className="h-8 w-8 p-0"
                   >
@@ -802,7 +625,11 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(prev + 1, totalPages)
+                      )
+                    }
                     disabled={currentPage === totalPages}
                     className="h-8 w-8 p-0"
                   >
@@ -824,5 +651,5 @@ export function LearnerProgressTable({ className }: LearnerProgressTableProps) {
         />
       )}
     </Card>
-  )
+  );
 }
