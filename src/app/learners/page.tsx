@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import LearnerDetailSideCurtain from '@/components/LearnerDetailSideCurtain';
+import { EditLearnerModal } from '@/components/EditLearnerModal';
 import {
   Table,
   TableBody,
@@ -101,6 +102,8 @@ export default function LearnersPage() {
   const [isSideCurtainOpen, setIsSideCurtainOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isInitialMount, setIsInitialMount] = useState(true);
+  const [editingLearner, setEditingLearner] = useState<AdminLearner | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fetch statistics
   const fetchStatistics = async () => {
@@ -314,6 +317,16 @@ export default function LearnersPage() {
   const closeSideCurtain = () => {
     setIsSideCurtainOpen(false);
     setSelectedLearner(null);
+  };
+
+  const handleEditLearner = (learner: AdminLearner) => {
+    setEditingLearner(learner);
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingLearner(null);
   };
 
   // Use summary data from API
@@ -643,6 +656,17 @@ export default function LearnersPage() {
                                         <Eye className="h-4 w-4" />
                                         <span>View</span>
                                       </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleEditLearner(learner)
+                                        }
+                                        className="flex items-center space-x-1"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                        <span>Edit</span>
+                                      </Button>
                                     </div>
                                   </TableCell>
                                 </TableRow>
@@ -684,6 +708,17 @@ export default function LearnersPage() {
                                 >
                                   <Eye className="h-4 w-4" />
                                   <span>View</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleEditLearner(learner)
+                                  }
+                                  className="flex items-center space-x-1"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span>Edit</span>
                                 </Button>
                               </div>
                             </div>
@@ -910,6 +945,14 @@ export default function LearnersPage() {
             isAdmin={true}
           />
         )}
+
+        {/* Edit Learner Modal */}
+        <EditLearnerModal
+          learner={editingLearner}
+          isOpen={isEditModalOpen}
+          onClose={closeEditModal}
+          onSuccess={refreshLearners}
+        />
       </div>
     </DashboardLayout>
   );

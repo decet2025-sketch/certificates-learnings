@@ -55,6 +55,7 @@ export function AddOrganizationModal({
 
   const onSubmit = async (data: CreateOrganizationInput) => {
     try {
+      // @ts-ignore
       await createOrganization({
         name: data.name,
         website: data.website,

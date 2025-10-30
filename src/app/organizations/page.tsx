@@ -22,6 +22,8 @@ import {
   Mail,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { AddOrganizationModal } from '@/components/AddOrganizationModal';
 import { EditOrganizationModal } from '@/components/EditOrganizationModal';
@@ -57,6 +59,7 @@ export default function OrganizationsPage() {
   const [organizationForPasswordChange, setOrganizationForPasswordChange] = useState<any>(null);
   const [selectedOrganization, setSelectedOrganization] =
     useState<any>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [organizationToDelete, setOrganizationToDelete] =
     useState<any>(null);
   const [stats, setStats] = useState({
@@ -203,6 +206,22 @@ export default function OrganizationsPage() {
   const handleOpenChangePasswordModal = (organization: any) => {
     setOrganizationForPasswordChange(organization);
     setChangePasswordModalOpen(true);
+  };
+
+  const togglePasswordVisibility = (organizationId: string) => {
+    setVisiblePasswords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(organizationId)) {
+        newSet.delete(organizationId);
+      } else {
+        newSet.add(organizationId);
+      }
+      return newSet;
+    });
+  };
+
+  const maskPassword = (password: string) => {
+    return '•'.repeat(password.length);
   };
 
   const confirmDelete = async () => {
@@ -489,12 +508,36 @@ export default function OrganizationsPage() {
                               </div>
                             </TableCell>
                             <TableCell className="px-4 py-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenChangePasswordModal(organization)}>
-                                Change Password
-                              </Button>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="text-sm font-mono bg-muted px-2 py-1 rounded flex-1">
+                                    {organization.password ? (
+                                      visiblePasswords.has(organization.id)
+                                        ? organization.password
+                                        : maskPassword(organization.password)
+                                    ) : 'No password set'}
+                                  </div>
+                                  {organization.password && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => togglePasswordVisibility(organization.id)}
+                                      className="h-8 w-8 p-0">
+                                      {visiblePasswords.has(organization.id) ? (
+                                        <EyeOff className="h-4 w-4" />
+                                      ) : (
+                                        <Eye className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenChangePasswordModal(organization)}>
+                                  Change Password
+                                </Button>
+                              </div>
                             </TableCell>
                             <TableCell className="text-center px-4 py-4">
                               <DropdownMenu>

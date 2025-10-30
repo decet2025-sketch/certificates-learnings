@@ -17,6 +17,7 @@ const transformApiOrganizationToStore = (
     name: apiOrg.name,
     website: apiOrg.website,
     sopEmail: apiOrg.sop_email,
+    password: apiOrg.password,
     status: 'active', // Default status since API doesn't provide this
     totalLearners: 0, // Will be updated when learners are loaded
     totalCourses: 0, // Will be updated when courses are loaded

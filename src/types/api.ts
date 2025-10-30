@@ -39,6 +39,7 @@ export interface OrganizationApi {
   website: string;
   name: string;
   sop_email: string;
+  password: string;
   created_at: string;
   updated_at: string;
 }

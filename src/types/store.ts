@@ -29,6 +29,7 @@ export interface Organization {
   status: 'active' | 'inactive' | 'pending';
   totalLearners: number;
   totalCourses: number;
+  password: string
 }
 
 export interface LearnerProgress {

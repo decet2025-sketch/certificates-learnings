@@ -519,6 +519,33 @@ export const adminApi = {
     }>('COURSE_STATISTICS', {});
     return result.data;
   },
+
+  // Update Learner
+  updateLearner: async (learnerData: {
+    learner_email: string;
+    organization_website: string;
+    name: string;
+    email: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const result = await executeAdminRouter<{
+      ok: boolean;
+      status: number;
+      data: {
+        success: boolean;
+        message: string;
+        learner_info: {
+          name: string;
+          email: string;
+          organization_website: string;
+        };
+      };
+    }>('UPDATE_LEARNER', learnerData);
+
+    return {
+      success: result.ok && result.data.success,
+      message: result.data.message,
+    };
+  },
 };
 
 // Legacy API functions for backward compatibility
