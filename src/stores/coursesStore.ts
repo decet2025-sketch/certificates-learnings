@@ -252,6 +252,21 @@ export const useCoursesStore = create<CoursesStore>()(
               transformApiCourseToStore
             );
 
+            
+            // Pin courses containing specific keywords to the top
+            const pinnedKeywords = ['201', '202', '203', '204'];
+            courses.sort((a, b) => {
+              const aName = (a.name || '').toLowerCase();
+              const bName = (b.name || '').toLowerCase();
+              
+              const isAPinned = pinnedKeywords.some(keyword => aName.includes(keyword));
+              const isBPinned = pinnedKeywords.some(keyword => bName.includes(keyword));
+
+              if (isAPinned && !isBPinned) return -1;
+              if (!isAPinned && isBPinned) return 1;
+              return 0;
+            });
+
             // Use pagination object directly like learners store
             const totalItems = response.pagination?.total || 0;
             const hasMore = response.pagination?.has_more || false;
